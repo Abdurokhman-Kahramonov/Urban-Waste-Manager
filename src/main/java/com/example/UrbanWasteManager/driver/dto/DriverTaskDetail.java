@@ -15,5 +15,6 @@ public class DriverTaskDetail {
     private String status;
     private LocalDateTime reportedAt;
     private List<String> mediaUrls;
+    private List<String> mediaTokens;
     private String reporterNote;
 }

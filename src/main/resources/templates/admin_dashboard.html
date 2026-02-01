@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Urban Waste Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/js/app.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        .nav-link.active { background-color: #1e40af; color: white; }
+        .nav-link { color: #cbd5e1; }
+        .nav-link:hover { color: white; }
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow-x: hidden; overflow-y: visible !important; }
+        #detailMap { height: 250px; width: 100%; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex">
+
+    <!-- Sidebar -->
+    <aside class="bg-slate-900 w-64 min-h-screen flex flex-col text-white flex-shrink-0">
+        <div class="p-6 border-b border-slate-800">
+            <h1 class="text-xl font-bold tracking-wide">Urban Waste<br><span class="text-blue-500">Admin Panel</span></h1>
+        </div>
+        
+        <nav class="flex-grow p-4 space-y-2">
+            <a href="#" class="nav-link active flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                Driver Manager
+            </a>
+            <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg font-medium opacity-50 cursor-not-allowed" title="Coming Soon">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                User Manager
+            </a>
+            <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg font-medium opacity-50 cursor-not-allowed" title="Coming Soon">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                Metrics
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800">
+            <div class="flex items-center gap-3 mb-4 px-2">
+                <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold">A</div>
+                <div class="text-sm">
+                    <p class="font-medium">Administrator</p>
+                    <p class="text-slate-400 text-xs">admin@urbanwaste.com</p>
+                </div>
+            </div>
+            <button onclick="App.Auth.logout()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 py-2 rounded transition text-sm">Sign Out</button>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-grow p-8 overflow-y-auto h-screen">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <h2 class="text-2xl font-bold text-gray-800">Driver & Task Management</h2>
+            <button onclick="loadData()" class="text-blue-600 hover:underline text-sm flex items-center gap-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                Refresh Data
+            </button>
+        </header>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-sm font-medium text-gray-500 mb-1">Total Events</p>
+                <p id="totalEvents" class="text-3xl font-bold text-gray-800">-</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-sm font-medium text-gray-500 mb-1">Pending Actions</p>
+                <p id="pendingEvents" class="text-3xl font-bold text-yellow-600">-</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-sm font-medium text-gray-500 mb-1">Completed</p>
+                <p id="completedEvents" class="text-3xl font-bold text-green-600">-</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <p class="text-sm font-medium text-gray-500 mb-1">Total Drivers</p>
+                <p id="totalDrivers" class="text-3xl font-bold text-blue-600">-</p>
+            </div>
+        </div>
+
+        <!-- Events Table -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-100">
+                <h3 class="text-lg font-bold text-gray-800">Operational Events</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-600 text-sm uppercase tracking-wider">
+                            <th class="p-4 font-semibold border-b">ID</th>
+                            <th class="p-4 font-semibold border-b">Status</th>
+                            <th class="p-4 font-semibold border-b">Assigned Driver</th>
+                            <th class="p-4 font-semibold border-b">Reported</th>
+                            <th class="p-4 font-semibold border-b text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eventsTableBody" class="text-sm text-gray-700 divide-y divide-gray-100">
+                        <!-- Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- Detail Modal -->
+    <div id="detailModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden">
+            
+            <!-- Header -->
+            <div class="p-6 border-b flex justify-between items-center bg-gray-50">
+                <div>
+                    <h3 class="text-xl font-bold text-gray-800">Event Details <span id="modalEventId" class="text-gray-500 font-normal">#...</span></h3>
+                    <p id="modalStatus" class="text-sm font-medium mt-1 inline-block px-2 py-0.5 rounded"></p>
+                </div>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="flex-grow overflow-y-auto p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    
+                    <!-- Left: Info -->
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="text-sm font-bold text-gray-500 uppercase mb-2">Description</h4>
+                            <p id="modalDesc" class="text-gray-800 text-lg leading-relaxed bg-gray-50 p-3 rounded border"></p>
+                        </div>
+                        
+                        <div>
+                            <h4 class="text-sm font-bold text-gray-500 uppercase mb-2">Location</h4>
+                            <div id="detailMap" class="rounded border shadow-sm"></div>
+                            <p id="modalLocationText" class="text-xs text-gray-500 mt-1"></p>
+                        </div>
+
+                        <div>
+                            <h4 class="text-sm font-bold text-gray-500 uppercase mb-2">Timeline</h4>
+                            <ul class="space-y-2 text-sm">
+                                <li class="flex justify-between">
+                                    <span class="text-gray-600">Reported:</span>
+                                    <span id="modalReportedAt" class="font-medium"></span>
+                                </li>
+                                <li class="flex justify-between">
+                                    <span class="text-gray-600">Last Update:</span>
+                                    <span id="modalUpdatedAt" class="font-medium"></span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Right: Evidence & Actions -->
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="text-sm font-bold text-gray-500 uppercase mb-2">Photo Evidence</h4>
+                            <div id="modalImages" class="grid grid-cols-2 gap-2">
+                                <!-- Images -->
+                            </div>
+                        </div>
+
+                        <div id="modalActions" class="bg-blue-50 p-4 rounded border border-blue-100">
+                            <h4 class="text-sm font-bold text-blue-800 uppercase mb-3">Management Actions</h4>
+                            
+                            <!-- Assign Form -->
+                            <div id="assignSection" class="hidden space-y-3">
+                                <label class="block text-sm text-gray-700">Assign Driver:</label>
+                                <div class="flex gap-2">
+                                    <select id="driverSelect" class="flex-grow border rounded p-2 text-sm"></select>
+                                    <button onclick="submitAssign()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-700">Assign</button>
+                                </div>
+                            </div>
+
+                            <!-- Verify Actions -->
+                            <div id="verifySection" class="hidden space-y-3">
+                                <p class="text-sm text-gray-600">Cleanup reported. Please review evidence.</p>
+                                <div class="flex gap-2">
+                                    <button onclick="submitVerify()" class="flex-1 bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-green-700">
+                                        Verify & Close
+                                    </button>
+                                    <button onclick="submitReopen()" class="flex-1 bg-red-100 text-red-700 px-4 py-2 rounded text-sm font-semibold hover:bg-red-200 border border-red-200">
+                                        Reject & Reopen
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Info Only -->
+                            <div id="infoSection" class="hidden">
+                                <p class="text-sm text-gray-500 italic">No actions available for this state.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State ---
+        let events = [];
+        let drivers = [];
+        let map = null;
+        let currentEvent = null;
+
+        // --- Init ---
+        async function init() {
+            App.Auth.requireRole('ADMIN');
+            await loadData();
+        }
+
+        async function loadData() {
+            try {
+                // Parallel fetch
+                const [stats, eventsData, driversData] = await Promise.all([
+                    App.Api.get('/admin/stats'),
+                    App.Api.get('/admin/events'),
+                    App.Api.get('/admin/drivers')
+                ]);
+
+                // Render Stats
+                document.getElementById('totalEvents').textContent = stats.totalEvents;
+                document.getElementById('pendingEvents').textContent = stats.pendingEvents;
+                document.getElementById('completedEvents').textContent = stats.completedEvents;
+                document.getElementById('totalDrivers').textContent = stats.totalDrivers;
+
+                // Store & Render Events
+                events = eventsData;
+                drivers = driversData;
+                renderEventsTable();
+
+            } catch (err) {
+                console.error("Load failed", err);
+            }
+        }
+
+        // --- Render ---
+        function renderEventsTable() {
+            const tbody = document.getElementById('eventsTableBody');
+            if (events.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500">No events found.</td></tr>';
+                return;
+            }
+
+            // Sort: Pending first, then by date
+            const sortedEvents = [...events].sort((a, b) => {
+                const priority = { 'REPORTED': 1, 'COMPLETED': 2, 'ASSIGNED': 3, 'VERIFIED': 4 };
+                const pA = priority[a.status] || 99;
+                const pB = priority[b.status] || 99;
+                if (pA !== pB) return pA - pB;
+                return new Date(b.createdAt) - new Date(a.createdAt);
+            });
+
+            tbody.innerHTML = sortedEvents.map(e => `
+                <tr class="hover:bg-gray-50 transition cursor-pointer" onclick="openDetail('${e.eventId}')">
+                    <td class="p-4 font-mono text-gray-600">#${e.eventId.substring(0, 8)}</td>
+                    <td class="p-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${getStatusClass(e.status)}">${e.status}</span></td>
+                    <td class="p-4 text-gray-800">${e.assignedDriverName}</td>
+                    <td class="p-4 text-gray-500">${new Date(e.createdAt).toLocaleDateString()}</td>
+                    <td class="p-4 text-right">
+                        <span class="text-blue-600 hover:text-blue-800 text-sm font-medium">View Details &rarr;</span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function getStatusClass(status) {
+            const map = {
+                'REPORTED': 'bg-red-100 text-red-700',
+                'ASSIGNED': 'bg-blue-100 text-blue-700',
+                'ACCEPTED': 'bg-indigo-100 text-indigo-700',
+                'COMPLETED': 'bg-green-100 text-green-700',
+                'VERIFIED': 'bg-teal-100 text-teal-700'
+            };
+            return map[status] || 'bg-gray-100 text-gray-700';
+        }
+
+        // --- Modal ---
+        function openDetail(eventId) {
+            const e = events.find(ev => ev.eventId === eventId);
+            if (!e) return;
+            currentEvent = e;
+
+            // Fill Info
+            document.getElementById('modalEventId').textContent = '#' + e.eventId;
+            document.getElementById('modalDesc').textContent = e.description || "No description provided.";
+            document.getElementById('modalLocationText').textContent = `Lat: ${e.latitude}, Lng: ${e.longitude}`;
+            document.getElementById('modalReportedAt').textContent = new Date(e.createdAt).toLocaleString();
+            document.getElementById('modalUpdatedAt').textContent = new Date(e.lastUpdatedAt).toLocaleString();
+            
+            const statusBadge = document.getElementById('modalStatus');
+            statusBadge.className = `text-sm font-medium mt-1 inline-block px-2 py-0.5 rounded ${getStatusClass(e.status)}`;
+            statusBadge.textContent = e.status;
+
+            // Images
+            const imgContainer = document.getElementById('modalImages');
+            if (e.mediaTokens && e.mediaTokens.length > 0) {
+                imgContainer.innerHTML = e.mediaTokens.map(token => `
+                    <a href="/api/media/${token}/content" target="_blank" class="block bg-gray-100 rounded overflow-hidden h-32 relative group">
+                        <img src="/api/media/${token}/content" class="w-full h-full object-cover" alt="Event Evidence">
+                    </a>
+                `).join('');
+            } else {
+                imgContainer.innerHTML = '<p class="text-sm text-gray-400 col-span-2">No photos available.</p>';
+            }
+
+            // Map
+            setTimeout(() => {
+                if (map) { map.remove(); }
+                map = L.map('detailMap').setView([e.latitude, e.longitude], 14);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                L.marker([e.latitude, e.longitude]).addTo(map);
+            }, 100);
+
+            // Actions
+            document.getElementById('assignSection').classList.add('hidden');
+            document.getElementById('verifySection').classList.add('hidden');
+            document.getElementById('infoSection').classList.add('hidden');
+
+            if (e.status === 'REPORTED') {
+                document.getElementById('assignSection').classList.remove('hidden');
+                const sel = document.getElementById('driverSelect');
+                sel.innerHTML = drivers.length ? 
+                    drivers.map(d => `<option value="${d.id}">${d.firstName} ${d.lastName} (${d.email})</option>`).join('') :
+                    '<option disabled>No drivers available</option>';
+            } else if (e.status === 'COMPLETED') {
+                document.getElementById('verifySection').classList.remove('hidden');
+            } else {
+                document.getElementById('infoSection').classList.remove('hidden');
+            }
+
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+            currentEvent = null;
+        }
+
+        // --- Logic ---
+        async function submitAssign() {
+            const driverId = document.getElementById('driverSelect').value;
+            if (!driverId) return;
+
+            try {
+                await App.Api.post(`/admin/events/${currentEvent.eventId}/assign`, { driverId: parseInt(driverId) });
+                closeModal();
+                loadData();
+                alert("Driver assigned successfully.");
+            } catch (err) {
+                alert("Assignment failed");
+            }
+        }
+
+        async function submitVerify() {
+            if (!confirm("Are you sure you want to verify this cleanup?")) return;
+            try {
+                await App.Api.post(`/admin/events/${currentEvent.eventId}/verify`);
+                closeModal();
+                loadData();
+            } catch (err) {
+                alert("Verification failed");
+            }
+        }
+
+        async function submitReopen() {
+            if (!confirm("Reject cleanup and reopen task?")) return;
+            try {
+                await App.Api.post(`/admin/events/${currentEvent.eventId}/reopen`);
+                closeModal();
+                loadData();
+            } catch (err) {
+                alert("Reopen failed");
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Waste - Urban Waste Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/js/app.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+    <!-- Main Container -->
+    <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        
+        <!-- STEP 1: CATEGORY SELECTION -->
+        <div id="step-category">
+            <h2 class="text-2xl font-bold mb-2 text-center text-gray-800">Select Report Type</h2>
+            <p class="text-gray-500 text-center mb-6 text-sm">What kind of issue are you reporting?</p>
+            
+            <div class="space-y-3">
+                <!-- Option 1: Illegal Dumping -->
+                <div onclick="selectCategory('ILLEGAL_DUMPING')" id="card-ILLEGAL_DUMPING" 
+                     class="report-card cursor-pointer border-2 border-gray-200 rounded-lg p-4 hover:border-yellow-400 transition-all flex items-start space-x-4">
+                    <div class="text-3xl">🛋️</div>
+                    <div>
+                        <h3 class="font-bold text-gray-800">Illegal Dumping</h3>
+                        <p class="text-xs text-gray-500 mt-1">Large items, furniture, or construction debris dumped illegally.</p>
+                    </div>
+                </div>
+
+                <!-- Option 2: Overflowed Container -->
+                <div onclick="selectCategory('OVERFLOWED_CONTAINER')" id="card-OVERFLOWED_CONTAINER"
+                     class="report-card cursor-pointer border-2 border-gray-200 rounded-lg p-4 hover:border-yellow-400 transition-all flex items-start space-x-4">
+                    <div class="text-3xl">🗑️</div>
+                    <div>
+                        <h3 class="font-bold text-gray-800">Overflowed Container</h3>
+                        <p class="text-xs text-gray-500 mt-1">Public trash bins that are full and spilling over.</p>
+                    </div>
+                </div>
+
+                <!-- Option 3: Missed Pickup -->
+                <div onclick="selectCategory('MISSED_PICKUP')" id="card-MISSED_PICKUP"
+                     class="report-card cursor-pointer border-2 border-gray-200 rounded-lg p-4 hover:border-yellow-400 transition-all flex items-start space-x-4">
+                    <div class="text-3xl">🚛</div>
+                    <div>
+                        <h3 class="font-bold text-gray-800">Missed Pickup</h3>
+                        <p class="text-xs text-gray-500 mt-1">Scheduled household waste pickup was skipped.</p>
+                    </div>
+                </div>
+            </div>
+
+            <button id="btn-continue" onclick="goToStep2()" disabled 
+                    class="mt-6 w-full bg-gray-300 text-gray-500 font-bold py-3 rounded cursor-not-allowed transition-colors">
+                Continue
+            </button>
+             <div class="mt-4 text-center">
+                 <a href="/ui/user/dashboard" class="text-blue-500 hover:underline text-sm">Cancel</a>
+            </div>
+        </div>
+
+        <!-- STEP 2: DETAILS FORM (Initially Hidden) -->
+        <div id="step-details" class="hidden">
+            <h2 class="text-2xl font-bold mb-4 text-center text-gray-800">Report Details</h2>
+            
+            <!-- Selected Category Summary -->
+            <div class="bg-blue-50 border border-blue-200 rounded p-3 mb-4 flex items-center justify-between">
+                <span class="text-sm font-semibold text-blue-800" id="summary-category">Category</span>
+                <button onclick="goToStep1()" class="text-xs text-blue-600 underline">Change</button>
+            </div>
+
+            <form id="reportForm" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea id="description" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-3 focus:ring-yellow-500 focus:border-yellow-500" rows="3" required placeholder="Describe the waste..."></textarea>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Latitude</label>
+                        <input type="number" step="any" id="lat" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50" required readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Longitude</label>
+                        <input type="number" step="any" id="lng" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50" required readonly>
+                    </div>
+                </div>
+                <button type="button" onclick="getLocation()" class="w-full py-2 border border-gray-300 rounded text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-center gap-2">
+                    📍 Use Current Location
+                </button>
+
+                <!-- Image upload would go here (requires MediaService integration) -->
+                
+                <button type="submit" class="w-full bg-yellow-500 text-white font-bold py-3 rounded hover:bg-yellow-600 shadow-md transition-colors">
+                    Submit Report
+                </button>
+            </form>
+             <div class="mt-4 text-center">
+                 <button onclick="goToStep1()" class="text-blue-500 hover:underline text-sm">Back</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // State
+        let selectedCategory = null;
+
+        // Auth Check
+        if (!App.Auth.isAuthenticated()) {
+            alert('You must be logged in to report a problem.');
+            window.location.href = '/ui/login';
+        }
+
+        // Functions
+        function selectCategory(category) {
+            selectedCategory = category;
+            
+            // UI Update
+            document.querySelectorAll('.report-card').forEach(el => {
+                el.classList.remove('border-yellow-500', 'bg-yellow-50');
+                el.classList.add('border-gray-200');
+            });
+            
+            const card = document.getElementById('card-' + category);
+            card.classList.remove('border-gray-200');
+            card.classList.add('border-yellow-500', 'bg-yellow-50');
+
+            // Enable Continue
+            const btn = document.getElementById('btn-continue');
+            btn.disabled = false;
+            btn.classList.remove('bg-gray-300', 'text-gray-500', 'cursor-not-allowed');
+            btn.classList.add('bg-blue-600', 'text-white', 'hover:bg-blue-700');
+        }
+
+        function goToStep2() {
+            if (!selectedCategory) return;
+            document.getElementById('step-category').classList.add('hidden');
+            document.getElementById('step-details').classList.remove('hidden');
+            
+            // Update summary
+            const readable = selectedCategory.replace('_', ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase());
+            document.getElementById('summary-category').textContent = readable;
+            
+            // Auto-fetch location if empty
+            if(!document.getElementById('lat').value) {
+                getLocation();
+            }
+        }
+
+        function goToStep1() {
+            document.getElementById('step-details').classList.add('hidden');
+            document.getElementById('step-category').classList.remove('hidden');
+        }
+
+        function getLocation() {
+            const btn = document.querySelector('button[onclick="getLocation()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Locating...';
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    position => {
+                        document.getElementById('lat').value = position.coords.latitude;
+                        document.getElementById('lng').value = position.coords.longitude;
+                        btn.innerHTML = '✅ Location Set';
+                    },
+                    error => {
+                         alert("Could not get location. Please enter manually or check permissions.");
+                         btn.innerHTML = originalText;
+                    }
+                );
+            } else {
+                alert("Geolocation is not supported by this browser.");
+                btn.innerHTML = originalText;
+            }
+        }
+
+        document.getElementById('reportForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!selectedCategory) {
+                alert("Please select a report type.");
+                goToStep1();
+                return;
+            }
+
+            const description = document.getElementById('description').value;
+            const latitude = parseFloat(document.getElementById('lat').value);
+            const longitude = parseFloat(document.getElementById('lng').value);
+
+            if (isNaN(latitude) || isNaN(longitude)) {
+                 alert("Location is required.");
+                 return;
+            }
+
+            const payload = { 
+                description, 
+                latitude, 
+                longitude,
+                category: selectedCategory 
+            };
+
+            try {
+                await App.Api.post('/api/waste-events', payload);
+                alert('Report submitted successfully!');
+                window.location.href = '/ui/user/dashboard';
+            } catch (err) {
+                console.error(err);
+                alert('Error submitting report: ' + err.message);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -8,4 +8,7 @@ import java.util.Optional;
 public interface WasteEventRepository extends JpaRepository<WasteEvent, Long> {
     List<WasteEvent> findAllByStatus(String status);
     Optional<WasteEvent> findByPublicId(String publicId);
+    List<WasteEvent> findAllByAssignedDriverId(Long driverId);
+    long countByStatus(String status);
+    long countByStatusIn(List<String> statuses);
 }

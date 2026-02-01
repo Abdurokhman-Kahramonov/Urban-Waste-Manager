@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Driver Dashboard - Urban Waste Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/js/app.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        .tab-btn.active { border-bottom: 2px solid #16a34a; color: #16a34a; font-weight: 600; }
+        .hidden { display: none; }
+        #map { height: 400px; width: 100%; z-index: 1; }
+        #modalMap { height: 200px; width: 100%; z-index: 1; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+    <!-- Navbar -->
+    <nav class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold text-gray-800">Driver Portal</h1>
+            <div class="flex items-center gap-4">
+                <span id="navEmail" class="text-sm text-gray-600 hidden md:inline"></span>
+                <button onclick="App.Auth.logout()" class="text-sm text-green-600 hover:text-green-800 font-medium">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-6 flex-grow max-w-4xl">
+        
+        <!-- Tabs -->
+        <div class="flex border-b border-gray-200 mb-6 bg-white rounded-t-lg">
+            <button onclick="switchTab('tasks')" id="tab-tasks" class="tab-btn active flex-1 py-4 text-center text-gray-500 hover:text-gray-700 transition">
+                Tasks List
+            </button>
+            <button onclick="switchTab('map')" id="tab-map" class="tab-btn flex-1 py-4 text-center text-gray-500 hover:text-gray-700 transition">
+                Map View
+            </button>
+            <button onclick="switchTab('profile')" id="tab-profile" class="tab-btn flex-1 py-4 text-center text-gray-500 hover:text-gray-700 transition">
+                My Profile
+            </button>
+        </div>
+
+        <!-- Section: Tasks List -->
+        <section id="section-tasks" class="space-y-4">
+            <div id="tasksList" class="space-y-4">
+                <!-- Loaded via JS -->
+            </div>
+        </section>
+
+        <!-- Section: Map -->
+        <section id="section-map" class="hidden">
+            <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                <div id="map" class="rounded-lg"></div>
+            </div>
+        </section>
+
+        <!-- Section: Profile -->
+        <section id="section-profile" class="hidden">
+            <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-lg font-semibold">Driver Profile</h2>
+                    <button onclick="toggleEditProfile()" id="editProfileBtn" class="text-green-600 text-sm font-medium hover:underline">Edit</button>
+                </div>
+
+                <form id="profileForm">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-500">Email</label>
+                            <p id="profileEmail" class="mt-1 text-gray-900 font-medium"></p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-500">Role</label>
+                            <p id="profileRole" class="mt-1 text-gray-900"></p>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">First Name</label>
+                                <input type="text" id="firstName" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 text-gray-500" disabled required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Last Name</label>
+                                <input type="text" id="lastName" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 text-gray-500" disabled required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="profileActions" class="hidden mt-6 flex justify-end gap-3">
+                        <button type="button" onclick="cancelEditProfile()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Task Detail Modal -->
+    <div id="detailModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+            <div class="p-6 border-b flex justify-between items-center bg-gray-50">
+                <h3 class="text-lg font-bold">Task Details</h3>
+                <button onclick="closeDetailModal()" class="text-gray-400 hover:text-gray-600 font-bold text-2xl">&times;</button>
+            </div>
+            <div class="p-6 space-y-4 max-h-[70vh] overflow-y-auto text-left">
+                <div id="modalMap" class="rounded border mb-4"></div>
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Status</p>
+                    <p id="modalStatusLabel" class="text-sm font-semibold inline-block px-2 py-0.5 rounded mt-1"></p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Description</p>
+                    <p id="modalDesc" class="text-gray-800 mt-1"></p>
+                </div>
+                <div>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Photos (Before / After)</p>
+                    <div id="modalPhotos" class="grid grid-cols-2 gap-2 mt-1"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Completion Modal -->
+    <div id="completionModal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-6">
+                <h3 class="text-lg font-bold mb-4">Complete Task</h3>
+                <p class="text-sm text-gray-600 mb-4">Please upload a photo of the cleared area to complete this task.</p>
+                
+                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition cursor-pointer mb-4" id="dropZone">
+                    <input type="file" id="photoInput" accept="image/*" class="hidden">
+                    <div id="uploadPlaceholder">
+                        <p class="text-gray-500">Tap to take photo</p>
+                    </div>
+                    <div id="uploadPreview" class="hidden">
+                        <img id="previewImg" class="h-32 mx-auto rounded object-cover shadow-sm">
+                        <button type="button" onclick="clearPhoto()" class="text-xs text-red-500 mt-2 underline">Retake</button>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <button onclick="closeCompletionModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                    <button onclick="submitCompletion()" id="modalSubmitBtn" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-semibold">
+                        Confirm Completion
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- State ---
+        let tasks = [];
+        let map = null;
+        let detailMap = null;
+        let currentTaskId = null;
+        let selectedFile = null;
+
+        // --- Init ---
+        async function init() {
+            App.Auth.requireRole('DRIVER');
+            document.getElementById('navEmail').textContent = App.Auth.getEmail();
+            await loadTasks();
+            loadProfile();
+        }
+
+        async function loadTasks() {
+            try {
+                const data = await App.Api.get('/driver/tasks');
+                tasks = data || [];
+                renderTasks();
+            } catch (err) { console.error("Failed to load tasks", err); }
+        }
+
+        function switchTab(tabName) {
+            ['tasks', 'map', 'profile'].forEach(t => {
+                document.getElementById(`section-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).classList.remove('active');
+            });
+            document.getElementById(`section-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+            if (tabName === 'map') setTimeout(initMap, 200);
+        }
+
+        function renderTasks() {
+            const container = document.getElementById('tasksList');
+            if (tasks.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-gray-500">No assigned tasks. Great job!</div>';
+                return;
+            }
+            container.innerHTML = tasks.map(t => `
+                <div class="bg-white p-5 rounded-lg shadow-sm border border-gray-100 ${t.status === 'ACCEPTED' ? 'border-l-4 border-l-green-500' : ''}">
+                    <div class="flex justify-between items-start">
+                        <div onclick="openDetail('${t.taskId}')" class="cursor-pointer flex-grow">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="px-2 py-0.5 rounded text-xs font-bold ${getStatusClass(t.status)}">${t.status}</span>
+                                <span class="text-xs text-gray-400">#${t.taskId}</span>
+                            </div>
+                            <p class="font-medium text-gray-800">${t.description || "Cleanup Request"}</p>
+                            <p class="text-sm text-gray-500 mt-1">${t.addressSummary}</p>
+                            <span class="text-blue-600 text-xs font-medium hover:underline mt-2 inline-block">View Details &rarr;</span>
+                        </div>
+                        <div class="flex flex-col gap-2 ml-4">
+                            ${getActionButtons(t)}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getStatusClass(status) {
+            const map = { 'REPORTED': 'bg-red-100 text-red-700', 'ASSIGNED': 'bg-blue-100 text-blue-700', 'ACCEPTED': 'bg-indigo-100 text-indigo-700', 'COMPLETED': 'bg-green-100 text-green-700', 'VERIFIED': 'bg-teal-100 text-teal-700' };
+            return map[status] || 'bg-gray-100 text-gray-700';
+        }
+
+        function getActionButtons(t) {
+            if (t.status === 'ASSIGNED') return `<button onclick="acceptTask('${t.taskId}')" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-semibold shadow-sm hover:bg-blue-700">Accept</button>`;
+            if (t.status === 'ACCEPTED') return `<button onclick="openCompletionModal('${t.taskId}')" class="bg-green-600 text-white px-4 py-2 rounded text-sm font-semibold shadow-sm hover:bg-green-700">Complete</button>`;
+            return '';
+        }
+
+        async function acceptTask(id) {
+            try {
+                await App.Api.post(`/driver/tasks/${id}/accept`);
+                await loadTasks();
+            } catch (err) { alert("Error accepting task"); }
+        }
+
+        async function openDetail(id) {
+            try {
+                const task = await App.Api.get(`/driver/tasks/${id}`);
+                document.getElementById('modalDesc').textContent = task.description || "No description provided.";
+                const statusLabel = document.getElementById('modalStatusLabel');
+                statusLabel.textContent = task.status;
+                statusLabel.className = `text-sm font-semibold inline-block px-2 py-0.5 rounded mt-1 ${getStatusClass(task.status)}`;
+                const photoContainer = document.getElementById('modalPhotos');
+                if (task.mediaTokens && task.mediaTokens.length > 0) {
+                    photoContainer.innerHTML = task.mediaTokens.map(t => `<img src="/api/media/${t}/content" class="w-full h-32 object-cover rounded shadow-sm">`).join('');
+                } else { photoContainer.innerHTML = '<p class="text-sm text-gray-400">No photos available.</p>'; }
+                document.getElementById('detailModal').classList.remove('hidden');
+                setTimeout(() => {
+                    if (detailMap) detailMap.remove();
+                    detailMap = L.map('modalMap').setView([task.latitude, task.longitude], 15);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(detailMap);
+                    L.marker([task.latitude, task.longitude]).addTo(detailMap);
+                }, 100);
+            } catch (err) { alert("Error loading task details"); }
+        }
+
+        function closeDetailModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
+        function initMap() {
+            if (map) return;
+            let center = [37.7749, -122.4194]; 
+            if (tasks.length > 0) {
+                 const parts = tasks[0].addressSummary.split(', ');
+                 const lat = parseFloat(parts[0].split(': ')[1]);
+                 const lng = parseFloat(parts[1].split(': ')[1]);
+                 if (!isNaN(lat)) center = [lat, lng];
+            }
+            map = L.map('map').setView(center, 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+            tasks.forEach(t => {
+                 const parts = t.addressSummary.split(', ');
+                 const lat = parseFloat(parts[0].split(': ')[1]);
+                 const lng = parseFloat(parts[1].split(': ')[1]);
+                 if (!isNaN(lat)) {
+                     const marker = L.marker([lat, lng]).addTo(map);
+                     marker.bindPopup(`<b>Task #${t.taskId}</b><br>${t.status}<br><button onclick="openDetail('${t.taskId}')" class="text-blue-500 text-sm">View Details</button>`);
+                 }
+            });
+        }
+
+        function openCompletionModal(id) { currentTaskId = id; clearPhoto(); document.getElementById('completionModal').classList.remove('hidden'); }
+        function closeCompletionModal() { document.getElementById('completionModal').classList.add('hidden'); currentTaskId = null; }
+        const dropZone = document.getElementById('dropZone');
+        const photoInput = document.getElementById('photoInput');
+        dropZone.onclick = () => photoInput.click();
+        photoInput.onchange = (e) => handleFile(e.target.files[0]);
+        function handleFile(file) {
+            if (!file) return;
+            selectedFile = file;
+            const reader = new FileReader();
+            reader.onload = (e) => { document.getElementById('previewImg').src = e.target.result; document.getElementById('uploadPlaceholder').classList.add('hidden'); document.getElementById('uploadPreview').classList.remove('hidden'); };
+            reader.readAsDataURL(file);
+        }
+        function clearPhoto() { selectedFile = null; photoInput.value = ''; document.getElementById('uploadPlaceholder').classList.remove('hidden'); document.getElementById('uploadPreview').classList.add('hidden'); }
+
+        async function submitCompletion() {
+            if (!selectedFile) { alert("Photo proof is required to complete the task."); return; }
+            const btn = document.getElementById('modalSubmitBtn');
+            btn.disabled = true;
+            btn.textContent = "Uploading...";
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedFile);
+                const token = App.Auth.getToken();
+                const mediaRes = await fetch('/api/media', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: formData });
+                if (!mediaRes.ok) throw new Error("Upload failed");
+                const mediaData = await mediaRes.json();
+                btn.textContent = "Confirming...";
+                await App.Api.post(`/driver/tasks/${currentTaskId}/complete`, { mediaToken: mediaData.token });
+                closeCompletionModal();
+                await loadTasks();
+                alert("Task completed successfully!");
+            } catch (err) { alert("Error: " + err.message); } finally { btn.disabled = false; btn.textContent = "Confirm Completion"; }
+        }
+
+        async function loadProfile() {
+            const userId = App.Auth.getUserId();
+            if (!userId) return;
+            try {
+                const user = await App.Api.get(`/api/users/${userId}`);
+                document.getElementById('profileEmail').textContent = user.email;
+                document.getElementById('profileRole').textContent = user.role;
+                document.getElementById('firstName').value = user.firstName;
+                document.getElementById('lastName').value = user.lastName;
+            } catch (err) {}
+        }
+
+        function toggleEditProfile() {
+            document.getElementById('firstName').disabled = false; document.getElementById('lastName').disabled = false;
+            document.getElementById('firstName').classList.remove('bg-gray-50', 'text-gray-500'); document.getElementById('lastName').classList.remove('bg-gray-50', 'text-gray-500');
+            document.getElementById('profileActions').classList.remove('hidden'); document.getElementById('editProfileBtn').classList.add('hidden');
+        }
+
+        function cancelEditProfile() {
+            document.getElementById('firstName').disabled = true; document.getElementById('lastName').disabled = true;
+            document.getElementById('firstName').classList.add('bg-gray-50', 'text-gray-500'); document.getElementById('lastName').classList.add('bg-gray-50', 'text-gray-500');
+            document.getElementById('profileActions').classList.add('hidden'); document.getElementById('editProfileBtn').classList.remove('hidden');
+            loadProfile();
+        }
+
+        document.getElementById('profileForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const userId = App.Auth.getUserId();
+            try {
+                await App.Api.put(`/api/users/${userId}`, { firstName: document.getElementById('firstName').value, lastName: document.getElementById('lastName').value });
+                alert("Profile Updated!"); cancelEditProfile();
+            } catch (err) { alert("Update failed"); }
+        };
+
+        init();
+    </script>
+</body>
+</html>
