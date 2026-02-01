@@ -32,12 +32,14 @@ public class AdminService {
 
     @Transactional
     public void assignDriver(String eventId, Long driverId) {
-        WasteEvent event = getEvent(eventId);
-        User driver = userRepository.findById(driverId)
-                .orElseThrow(() -> new RuntimeException("Driver not found"));
+        WasteEvent event = wasteEventRepository.findByPublicId(eventId)
+                .orElseThrow(() -> new com.example.UrbanWasteManager.common.exception.ResourceNotFoundException("Event not found with id: " + eventId));
         
-        if (!"DRIVER".equals(driver.getRole())) {
-            throw new RuntimeException("User is not a driver");
+        User driver = userRepository.findById(driverId)
+                .orElseThrow(() -> new com.example.UrbanWasteManager.common.exception.ResourceNotFoundException("Driver not found with id: " + driverId));
+        
+        if (!"DRIVER".equalsIgnoreCase(driver.getRole())) {
+            throw new IllegalArgumentException("User is not a driver");
         }
 
         event.setAssignedDriver(driver);
@@ -116,6 +118,7 @@ public class AdminService {
 
         return AdminEventView.builder()
                 .eventId(event.getPublicId())
+                .category(event.getCategory())
                 .reporterEmail(event.getReporter() != null ? event.getReporter().getEmail() : "Anonymous")
                 .assignedDriverName(event.getAssignedDriver() != null ? event.getAssignedDriver().getFirstName() + " " + event.getAssignedDriver().getLastName() : "Unassigned")
                 .status(event.getStatus())

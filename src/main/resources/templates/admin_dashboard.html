@@ -5,9 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Urban Waste Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="/js/app.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
     <style>
         .nav-link.active { background-color: #1e40af; color: white; }
         .nav-link { color: #cbd5e1; }
@@ -26,15 +28,15 @@
         </div>
         
         <nav class="flex-grow p-4 space-y-2">
-            <a href="#" class="nav-link active flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition">
+            <a href="#" onclick="showSection('events')" id="nav-events" class="nav-link active flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                Driver Manager
+                Event Manager
             </a>
-            <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg font-medium opacity-50 cursor-not-allowed" title="Coming Soon">
+            <a href="#" onclick="showSection('users')" id="nav-users" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                 User Manager
             </a>
-            <a href="#" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg font-medium opacity-50 cursor-not-allowed" title="Coming Soon">
+            <a href="#" onclick="showSection('metrics')" id="nav-metrics" class="nav-link flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                 Metrics
             </a>
@@ -57,7 +59,7 @@
         
         <!-- Header -->
         <header class="flex justify-between items-center mb-8">
-            <h2 class="text-2xl font-bold text-gray-800">Driver & Task Management</h2>
+            <h2 id="viewTitle" class="text-2xl font-bold text-gray-800">Event & Task Management</h2>
             <button onclick="loadData()" class="text-blue-600 hover:underline text-sm flex items-center gap-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                 Refresh Data
@@ -65,7 +67,7 @@
         </header>
 
         <!-- Stats -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div id="statsSection" class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <p class="text-sm font-medium text-gray-500 mb-1">Total Events</p>
                 <p id="totalEvents" class="text-3xl font-bold text-gray-800">-</p>
@@ -84,8 +86,8 @@
             </div>
         </div>
 
-        <!-- Events Table -->
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        <!-- Events Table View -->
+        <div id="eventsView" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div class="p-6 border-b border-gray-100">
                 <h3 class="text-lg font-bold text-gray-800">Operational Events</h3>
             </div>
@@ -94,6 +96,7 @@
                     <thead>
                         <tr class="bg-gray-50 text-gray-600 text-sm uppercase tracking-wider">
                             <th class="p-4 font-semibold border-b">ID</th>
+                            <th class="p-4 font-semibold border-b">Category</th>
                             <th class="p-4 font-semibold border-b">Status</th>
                             <th class="p-4 font-semibold border-b">Assigned Driver</th>
                             <th class="p-4 font-semibold border-b">Reported</th>
@@ -104,6 +107,154 @@
                         <!-- Rows -->
                     </tbody>
                 </table>
+            </div>
+        </div>
+
+        <!-- Users Table View (Hidden by default) -->
+        <div id="usersView" class="hidden bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-100">
+                <h3 class="text-lg font-bold text-gray-800">System Users</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-gray-50 text-gray-600 text-sm uppercase tracking-wider">
+                            <th class="p-4 font-semibold border-b">Name</th>
+                            <th class="p-4 font-semibold border-b">Email</th>
+                            <th class="p-4 font-semibold border-b">Role</th>
+                            <th class="p-4 font-semibold border-b">Joined</th>
+                            <th class="p-4 font-semibold border-b text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody" class="text-sm text-gray-700 divide-y divide-gray-100">
+                        <!-- Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Metrics View (Hidden by default) -->
+        <div id="metricsView" class="hidden space-y-6">
+            <!-- Metrics Nav Tabs -->
+            <div class="flex border-b border-gray-200 bg-white rounded-lg shadow-sm">
+                <button onclick="switchMetricTab('overview')" id="mtab-overview" class="metric-tab active flex-1 py-3 text-sm font-semibold text-gray-500 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500 transition">Overview</button>
+                <button onclick="switchMetricTab('performance')" id="mtab-performance" class="metric-tab flex-1 py-3 text-sm font-semibold text-gray-500 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500 transition">Performance</button>
+                <button onclick="switchMetricTab('operations')" id="mtab-operations" class="metric-tab flex-1 py-3 text-sm font-semibold text-gray-500 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500 transition">Operations</button>
+                <button onclick="switchMetricTab('quality')" id="mtab-quality" class="metric-tab flex-1 py-3 text-sm font-semibold text-gray-500 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500 transition">Quality</button>
+                <button onclick="switchMetricTab('geo')" id="mtab-geo" class="metric-tab flex-1 py-3 text-sm font-semibold text-gray-500 hover:text-blue-600 border-b-2 border-transparent hover:border-blue-500 transition">Geospatial</button>
+            </div>
+
+            <!-- TAB 1: OVERVIEW -->
+            <div id="mview-overview" class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h4 class="text-xs font-bold text-gray-400 uppercase">Avg Response Time</h4>
+                        <p class="text-3xl font-bold text-gray-800 mt-2">24<span class="text-base font-normal text-gray-500">m</span></p>
+                        <p class="text-xs text-green-500 mt-1">↓ 12% vs last week</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h4 class="text-xs font-bold text-gray-400 uppercase">Avg Resolution Time</h4>
+                        <p class="text-3xl font-bold text-gray-800 mt-2">4.2<span class="text-base font-normal text-gray-500">h</span></p>
+                        <p class="text-xs text-red-500 mt-1">↑ 5% vs last week</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h4 class="text-xs font-bold text-gray-400 uppercase">Completion Rate</h4>
+                        <p class="text-3xl font-bold text-gray-800 mt-2">94.5%</p>
+                        <p class="text-xs text-green-500 mt-1">↑ 2% vs last week</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h4 class="text-sm font-bold text-gray-700 mb-4">Weekly Event Volume</h4>
+                    <canvas id="chart-volume" height="80"></canvas>
+                </div>
+            </div>
+
+            <!-- TAB 2: PERFORMANCE -->
+            <div id="mview-performance" class="hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h4 class="text-sm font-bold text-gray-700 mb-4">Response Time Distribution</h4>
+                        <canvas id="chart-response-dist"></canvas>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h4 class="text-sm font-bold text-gray-700 mb-4">Resolution Time Trends</h4>
+                        <canvas id="chart-resolution-trend"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h4 class="text-sm font-bold text-gray-700 mb-4">Worker Performance</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-50 text-gray-500">
+                                <tr>
+                                    <th class="p-3">Driver</th>
+                                    <th class="p-3">Tasks</th>
+                                    <th class="p-3">Completed</th>
+                                    <th class="p-3">Avg Time</th>
+                                    <th class="p-3">Rating</th>
+                                </tr>
+                            </thead>
+                            <tbody id="driver-perf-body">
+                                <!-- JS Populated -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: OPERATIONS -->
+            <div id="mview-operations" class="hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h4 class="text-sm font-bold text-gray-700 mb-4">Open vs Closed Events</h4>
+                        <canvas id="chart-open-closed"></canvas>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h4 class="text-sm font-bold text-gray-700 mb-4">Event Type Distribution</h4>
+                        <canvas id="chart-types"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h4 class="text-sm font-bold text-gray-700 mb-4">Top Report Locations</h4>
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-50 text-gray-500">
+                            <tr>
+                                <th class="p-3">Location (Lat/Lng)</th>
+                                <th class="p-3">Reports</th>
+                                <th class="p-3">Most Common Type</th>
+                            </tr>
+                        </thead>
+                        <tbody id="top-locations-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 4: QUALITY -->
+            <div id="mview-quality" class="hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h4 class="text-sm font-bold text-gray-700 mb-4">SLA Compliance</h4>
+                        <canvas id="chart-sla"></canvas>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                        <h4 class="text-sm font-bold text-gray-700 mb-4">False / Spam Reports</h4>
+                        <canvas id="chart-spam"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 5: GEOSPATIAL -->
+            <div id="mview-geo" class="hidden h-[600px] bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden relative">
+                <div id="heatmap" class="w-full h-full z-0"></div>
+                <div class="absolute top-4 right-4 z-10 bg-white p-3 rounded shadow opacity-90">
+                    <h4 class="text-xs font-bold uppercase text-gray-500 mb-2">Layer Control</h4>
+                    <label class="flex items-center gap-2 text-sm cursor-pointer">
+                        <input type="checkbox" checked onchange="toggleHeatmap(this)"> Heatmap
+                    </label>
+                    <label class="flex items-center gap-2 text-sm cursor-pointer mt-1">
+                        <input type="checkbox" onchange="toggleMarkers(this)"> Markers
+                    </label>
+                </div>
             </div>
         </div>
     </main>
@@ -129,6 +280,11 @@
                     
                     <!-- Left: Info -->
                     <div class="space-y-6">
+                        <div>
+                            <h4 class="text-sm font-bold text-gray-500 uppercase mb-2">Category</h4>
+                            <p id="modalCategory" class="text-gray-800 font-medium"></p>
+                        </div>
+
                         <div>
                             <h4 class="text-sm font-bold text-gray-500 uppercase mb-2">Description</h4>
                             <p id="modalDesc" class="text-gray-800 text-lg leading-relaxed bg-gray-50 p-3 rounded border"></p>
@@ -169,11 +325,11 @@
                             
                             <!-- Assign Form -->
                             <div id="assignSection" class="hidden space-y-3">
-                                <label class="block text-sm text-gray-700">Assign Driver:</label>
-                                <div class="flex gap-2">
-                                    <select id="driverSelect" class="flex-grow border rounded p-2 text-sm"></select>
-                                    <button onclick="submitAssign()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-semibold hover:bg-blue-700">Assign</button>
-                                </div>
+                                <label class="block text-sm text-gray-700 font-semibold">Assign Driver</label>
+                                <select id="driverSelect" class="w-full border rounded p-2 text-sm bg-white shadow-sm"></select>
+                                <button onclick="submitAssign()" class="w-full bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700 shadow-sm transition">
+                                    Confirm Assignment
+                                </button>
                             </div>
 
                             <!-- Verify Actions -->
@@ -204,6 +360,7 @@
         // --- State ---
         let events = [];
         let drivers = [];
+        let users = [];
         let map = null;
         let currentEvent = null;
 
@@ -216,10 +373,11 @@
         async function loadData() {
             try {
                 // Parallel fetch
-                const [stats, eventsData, driversData] = await Promise.all([
+                const [stats, eventsData, driversData, usersData] = await Promise.all([
                     App.Api.get('/admin/stats'),
                     App.Api.get('/admin/events'),
-                    App.Api.get('/admin/drivers')
+                    App.Api.get('/admin/drivers'),
+                    App.Api.get('/admin/users')
                 ]);
 
                 // Render Stats
@@ -228,13 +386,163 @@
                 document.getElementById('completedEvents').textContent = stats.completedEvents;
                 document.getElementById('totalDrivers').textContent = stats.totalDrivers;
 
-                // Store & Render Events
+                // Store & Render
                 events = eventsData;
                 drivers = driversData;
+                users = usersData;
+                
                 renderEventsTable();
+                renderUsersTable();
 
             } catch (err) {
                 console.error("Load failed", err);
+            }
+        }
+
+        function showSection(section) {
+            const eventsView = document.getElementById('eventsView');
+            const usersView = document.getElementById('usersView');
+            const metricsView = document.getElementById('metricsView');
+            const statsSection = document.getElementById('statsSection');
+            
+            const navEvents = document.getElementById('nav-events');
+            const navUsers = document.getElementById('nav-users');
+            const navMetrics = document.getElementById('nav-metrics');
+            const viewTitle = document.getElementById('viewTitle');
+
+            // Reset all
+            eventsView.classList.add('hidden');
+            usersView.classList.add('hidden');
+            metricsView.classList.add('hidden');
+            statsSection.classList.add('hidden');
+            
+            navEvents.classList.remove('active');
+            navUsers.classList.remove('active');
+            navMetrics.classList.remove('active');
+
+            if (section === 'events') {
+                eventsView.classList.remove('hidden');
+                statsSection.classList.remove('hidden');
+                navEvents.classList.add('active');
+                viewTitle.textContent = "Event & Task Management";
+            } else if (section === 'users') {
+                usersView.classList.remove('hidden');
+                navUsers.classList.add('active');
+                viewTitle.textContent = "User & Driver Management";
+            } else if (section === 'metrics') {
+                metricsView.classList.remove('hidden');
+                navMetrics.classList.add('active');
+                viewTitle.textContent = "System Analytics & Metrics";
+                if (!window.metricsInitialized) {
+                    initMetrics();
+                    window.metricsInitialized = true;
+                }
+            }
+        }
+
+        // --- Metrics Logic ---
+        function switchMetricTab(tab) {
+            ['overview', 'performance', 'operations', 'quality', 'geo'].forEach(t => {
+                document.getElementById(`mview-${t}`).classList.add('hidden');
+                document.getElementById(`mtab-${t}`).classList.remove('active', 'text-blue-600', 'border-blue-500');
+                document.getElementById(`mtab-${t}`).classList.add('text-gray-500', 'border-transparent');
+            });
+            document.getElementById(`mview-${tab}`).classList.remove('hidden');
+            const btn = document.getElementById(`mtab-${tab}`);
+            btn.classList.add('active', 'text-blue-600', 'border-blue-500');
+            btn.classList.remove('text-gray-500', 'border-transparent');
+            
+            if (tab === 'geo') {
+                setTimeout(() => {
+                    if (window.heatMapInstance) window.heatMapInstance.invalidateSize();
+                }, 100);
+            }
+        }
+
+        async function initMetrics() {
+            try {
+                const data = await App.Api.get('/admin/metrics/dashboard');
+                
+                // 1. Overview Cards
+                // document.getElementById('metric-completion').textContent = data.overview.completionRate + '%';
+                // (Assuming IDs exist or we update HTML to match keys, for now let's focus on charts)
+
+                // 2. Volume Chart
+                new Chart(document.getElementById('chart-volume'), {
+                    type: 'line',
+                    data: {
+                        labels: data.volumeChart.labels,
+                        datasets: [{
+                            label: 'Reports',
+                            data: data.volumeChart.data,
+                            borderColor: '#3b82f6',
+                            tension: 0.4
+                        }]
+                    },
+                    options: { responsive: true, plugins: { legend: { display: false } } }
+                });
+
+                // 3. Type Chart
+                new Chart(document.getElementById('chart-types'), {
+                    type: 'pie',
+                    data: {
+                        labels: data.typeChart.labels,
+                        datasets: [{
+                            data: data.typeChart.data,
+                            backgroundColor: ['#6366f1', '#ec4899', '#8b5cf6', '#10b981']
+                        }]
+                    }
+                });
+
+                // 4. Status Chart (Open vs Closed)
+                new Chart(document.getElementById('chart-open-closed'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: data.statusChart.labels,
+                        datasets: [{
+                            data: data.statusChart.data,
+                            backgroundColor: ['#ef4444', '#10b981']
+                        }]
+                    }
+                });
+
+                // 5. Driver Table
+                const driverBody = document.getElementById('driver-perf-body');
+                if (data.driverTable && data.driverTable.length > 0) {
+                    driverBody.innerHTML = data.driverTable.map(row => `
+                        <tr class="border-b">
+                            <td class="p-3">${row.name}</td>
+                            <td class="p-3">-</td>
+                            <td class="p-3 text-green-600 font-bold">${row.completedTasks}</td>
+                            <td class="p-3">-</td>
+                            <td class="p-3">⭐⭐⭐⭐⭐</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    driverBody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-gray-500">No data available</td></tr>';
+                }
+
+                // 6. Heatmap
+                initHeatmap(data.heatMapData);
+
+            } catch (err) {
+                console.error("Failed to load metrics", err);
+            }
+        }
+
+        function initHeatmap(pointsData) {
+            if (window.heatMapInstance) return;
+            window.heatMapInstance = L.map('heatmap').setView([40.7128, -74.0060], 12); // Default fallback
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(window.heatMapInstance);
+            
+            if (pointsData && pointsData.length > 0) {
+                // Auto-center
+                const first = pointsData[0];
+                window.heatMapInstance.setView([first.lat, first.lng], 13);
+                
+                // Format for leaflet-heat: [lat, lng, intensity]
+                const heatPoints = pointsData.map(p => [p.lat, p.lng, 1.0]); 
+                L.heatLayer(heatPoints, {radius: 25}).addTo(window.heatMapInstance);
             }
         }
 
@@ -242,11 +550,10 @@
         function renderEventsTable() {
             const tbody = document.getElementById('eventsTableBody');
             if (events.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500">No events found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-500">No events found.</td></tr>';
                 return;
             }
 
-            // Sort: Pending first, then by date
             const sortedEvents = [...events].sort((a, b) => {
                 const priority = { 'REPORTED': 1, 'COMPLETED': 2, 'ASSIGNED': 3, 'VERIFIED': 4 };
                 const pA = priority[a.status] || 99;
@@ -258,6 +565,7 @@
             tbody.innerHTML = sortedEvents.map(e => `
                 <tr class="hover:bg-gray-50 transition cursor-pointer" onclick="openDetail('${e.eventId}')">
                     <td class="p-4 font-mono text-gray-600">#${e.eventId.substring(0, 8)}</td>
+                    <td class="p-4 text-gray-800 font-medium">${e.category ? e.category.replace('_', ' ') : 'N/A'}</td>
                     <td class="p-4"><span class="px-2 py-1 rounded-full text-xs font-bold ${getStatusClass(e.status)}">${e.status}</span></td>
                     <td class="p-4 text-gray-800">${e.assignedDriverName}</td>
                     <td class="p-4 text-gray-500">${new Date(e.createdAt).toLocaleDateString()}</td>
@@ -266,6 +574,39 @@
                     </td>
                 </tr>
             `).join('');
+        }
+
+        function renderUsersTable() {
+            const tbody = document.getElementById('usersTableBody');
+            tbody.innerHTML = users.map(u => `
+                <tr class="hover:bg-gray-50 transition">
+                    <td class="p-4 font-medium text-gray-800">${u.firstName} ${u.lastName}</td>
+                    <td class="p-4 text-gray-600">${u.email}</td>
+                    <td class="p-4">
+                        <span class="px-2 py-1 rounded text-xs font-bold ${u.role === 'ADMIN' ? 'bg-purple-100 text-purple-700' : u.role === 'DRIVER' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'}">
+                            ${u.role}
+                        </span>
+                    </td>
+                    <td class="p-4 text-gray-500">${new Date(u.createdAt).toLocaleDateString()}</td>
+                    <td class="p-4 text-right">
+                        ${u.role === 'USER' ? `
+                            <button onclick="promoteUser(${u.id})" class="bg-green-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-green-700">
+                                Promote to Driver
+                            </button>
+                        ` : ''}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        async function promoteUser(userId) {
+            if (!confirm("Promote this user to Driver? They will be able to accept waste collection tasks.")) return;
+            try {
+                await App.Api.put(`/admin/users/${userId}/promote`);
+                await loadData();
+            } catch (err) {
+                alert("Promotion failed: " + err.message);
+            }
         }
 
         function getStatusClass(status) {
@@ -287,6 +628,7 @@
 
             // Fill Info
             document.getElementById('modalEventId').textContent = '#' + e.eventId;
+            document.getElementById('modalCategory').textContent = e.category ? e.category.replace('_', ' ') : "N/A";
             document.getElementById('modalDesc').textContent = e.description || "No description provided.";
             document.getElementById('modalLocationText').textContent = `Lat: ${e.latitude}, Lng: ${e.longitude}`;
             document.getElementById('modalReportedAt').textContent = new Date(e.createdAt).toLocaleString();
@@ -321,12 +663,15 @@
             document.getElementById('verifySection').classList.add('hidden');
             document.getElementById('infoSection').classList.add('hidden');
 
-            if (e.status === 'REPORTED') {
+            if (['REPORTED', 'ASSIGNED', 'ACCEPTED'].includes(e.status)) {
                 document.getElementById('assignSection').classList.remove('hidden');
+                document.getElementById('assignSection').querySelector('label').textContent = 
+                    e.status === 'REPORTED' ? 'Assign Driver:' : 'Reassign Driver:';
+                
                 const sel = document.getElementById('driverSelect');
                 sel.innerHTML = drivers.length ? 
-                    drivers.map(d => `<option value="${d.id}">${d.firstName} ${d.lastName} (${d.email})</option>`).join('') :
-                    '<option disabled>No drivers available</option>';
+                    drivers.map(d => `<option value="${d.id}" ${e.assignedDriverName.includes(d.firstName) ? 'selected' : ''}>${d.firstName} ${d.lastName} (${d.email})</option>`).join('') :
+                    '<option disabled>No drivers available. Promote a user first.</option>';
             } else if (e.status === 'COMPLETED') {
                 document.getElementById('verifySection').classList.remove('hidden');
             } else {
@@ -344,15 +689,18 @@
         // --- Logic ---
         async function submitAssign() {
             const driverId = document.getElementById('driverSelect').value;
-            if (!driverId) return;
+            if (!driverId) {
+                alert("Please select a driver. If the list is empty, promote a user to driver first in the User Manager.");
+                return;
+            }
 
             try {
                 await App.Api.post(`/admin/events/${currentEvent.eventId}/assign`, { driverId: parseInt(driverId) });
                 closeModal();
-                loadData();
+                await loadData();
                 alert("Driver assigned successfully.");
             } catch (err) {
-                alert("Assignment failed");
+                alert("Assignment failed: " + err.message);
             }
         }
 

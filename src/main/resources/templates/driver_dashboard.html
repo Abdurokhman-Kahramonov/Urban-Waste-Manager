@@ -226,7 +226,10 @@
             try {
                 await App.Api.post(`/driver/tasks/${id}/accept`);
                 await loadTasks();
-            } catch (err) { alert("Error accepting task"); }
+            } catch (err) { 
+                // Error message from exception handler is propagated via App.Api wrapper
+                alert(err.message || "Error accepting task"); 
+            }
         }
 
         async function openDetail(id) {

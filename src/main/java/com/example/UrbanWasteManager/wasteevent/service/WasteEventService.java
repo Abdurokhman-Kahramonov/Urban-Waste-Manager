@@ -37,6 +37,7 @@ public class WasteEventService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + reporterEmail));
 
         WasteEvent event = WasteEvent.builder()
+                .category(request.getCategory())
                 .description(request.getDescription())
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
@@ -95,6 +96,7 @@ public class WasteEventService {
 
         return PublicWasteEventResponse.builder()
                 .publicId(event.getPublicId())
+                .category(event.getCategory())
                 .description(event.getDescription())
                 .latitude(event.getLatitude())
                 .longitude(event.getLongitude())

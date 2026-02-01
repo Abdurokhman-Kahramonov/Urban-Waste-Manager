@@ -29,6 +29,9 @@ public class WasteEvent {
     @Column(nullable = false)
     private Double longitude;
 
+    @Column(length = 50)
+    private String category;
+
     @Column(length = 1000)
     private String description;
 

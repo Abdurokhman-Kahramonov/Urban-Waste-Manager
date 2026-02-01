@@ -6,6 +6,9 @@ import lombok.Data;
 
 @Data
 public class WasteReportRequest {
+    @NotBlank(message = "Category is required")
+    private String category;
+
     @NotBlank(message = "Description is required")
     private String description;
 

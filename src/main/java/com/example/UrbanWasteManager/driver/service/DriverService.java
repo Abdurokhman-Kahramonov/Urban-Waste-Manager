@@ -94,8 +94,15 @@ public class DriverService {
 
         // Simple State Machine Validation
         String currentStatus = event.getStatus();
-        if (action.equals("ACCEPT") && !currentStatus.equals("ASSIGNED")) {
-            throw new RuntimeException("Invalid transition: Cannot accept task in status " + currentStatus);
+        if (action.equals("ACCEPT")) {
+            if (!currentStatus.equals("ASSIGNED")) {
+                throw new RuntimeException("Invalid transition: Cannot accept task in status " + currentStatus);
+            }
+            // Check for existing active tasks
+            long activeTasks = wasteEventRepository.countByAssignedDriverIdAndStatus(driver.getId(), "ACCEPTED");
+            if (activeTasks > 0) {
+                throw new IllegalStateException("You already have an active task. Please complete it before accepting a new one.");
+            }
         }
         // ... more validations can be added here
 

@@ -9,6 +9,7 @@ import java.util.List;
 @Builder
 public class AdminEventView {
     private String eventId;
+    private String category;
     private String reporterEmail;
     private String assignedDriverName;
     private String status;

@@ -9,6 +9,7 @@ import java.util.List;
 @Builder
 public class PublicWasteEventResponse {
     private String publicId;
+    private String category;
     private String description;
     private Double latitude;
     private Double longitude;
