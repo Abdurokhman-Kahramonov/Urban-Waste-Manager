@@ -1,14 +1,24 @@
-version: '3.8'
 services:
-  app:
-    build: .
-    container_name: urban-waste-manager-app
+  postgres:
+    image: postgres:16
+    container_name: urban-postgres
     environment:
-      - SPRING_DATASOURCE_URL=${SPRING_DATASOURCE_URL}
-      - SPRING_DATASOURCE_USERNAME=${SPRING_DATASOURCE_USERNAME}
-      - SPRING_DATASOURCE_PASSWORD=${SPRING_DATASOURCE_PASSWORD}
-      - APP_UPLOAD_DIR=/uploads
+      POSTGRES_DB: urban_db
+      POSTGRES_USER: urban_user
+      POSTGRES_PASSWORD: urban_pass
     ports:
-      - "8080:8080"
+      - "5432:5432"
     volumes:
-      - ./uploads:/uploads
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    image: khversatile/urban-waste-manager:1.0.0
+    env_file:
+      - .env
+    ports:
+      - "8083:8083"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:

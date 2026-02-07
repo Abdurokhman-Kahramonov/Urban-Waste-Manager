@@ -30,8 +30,8 @@ build/
 .env
 uploads/
 
-src/main/resources/application.properties
-/application.properties
+docker-compose.yml
+
 target/
 *.log
 *.class
